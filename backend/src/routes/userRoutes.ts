@@ -1,34 +1,18 @@
 import express from 'express';
+import { connectDB } from '../db';
 
 const router = express.Router();
 
-// Mock data
-const users = [
-  {
-    _id: '1',
-    name: 'Alice Johnson',
-    email: 'alice@example.com',
-    interests: ['Technology', 'Networking'],
-    profilePic: 'https://via.placeholder.com/300',
-  },
-  {
-    _id: '2',
-    name: 'Bob Smith',
-    email: 'bob@example.com',
-    interests: ['Startups', 'Investing'],
-    profilePic: 'https://via.placeholder.com/300',
-  },
-  {
-    _id: '3',
-    name: 'Charlie Brown',
-    email: 'charlie@example.com',
-    interests: ['Design', 'Marketing'],
-    profilePic: 'https://via.placeholder.com/300',
-  },
-];
-
-router.get('/', (req, res) => {
-  res.json(users);
+// Get all users
+router.get('/', async (req, res) => {
+    try {
+        const db = await connectDB();
+        const users = await db.collection('users').find().toArray();
+        res.json(users);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).json({ message: 'Error fetching users' });
+    }
 });
 
 export default router;

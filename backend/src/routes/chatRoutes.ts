@@ -1,64 +1,82 @@
 import express from 'express';
+import { connectDB } from '../db';
+import { ObjectId } from 'mongodb';
 
 const router = express.Router();
 
-// Mock data
-interface Message {
-  id: string;
-  chatId: string;
-  sender: string;
-  text: string;
-  timestamp: string;
-}
-
-interface Chat {
-  id: string;
-  name: string;
-  participants: string[];
-}
-
-const chats: Chat[] = [
-  { id: '1', name: 'Alice Johnson', participants: ['1', '2'] },
-  { id: '2', name: 'Bob Smith', participants: ['1', '3'] },
-];
-
-const messages: Message[] = [
-  { id: '1', chatId: '1', sender: '1', text: 'Hi Alice!', timestamp: new Date().toISOString() },
-  { id: '2', chatId: '1', sender: '2', text: 'Hello!', timestamp: new Date().toISOString() },
-  { id: '3', chatId: '2', sender: '1', text: 'Hey Bob!', timestamp: new Date().toISOString() },
-];
-
 // Get all chats
-router.get('/', (req, res) => {
-  res.json(chats);
+router.get('/', async (req, res) => {
+    console.log('GET /chats called'); // Debugging log
+    try {
+        const db = await connectDB();
+        const chats = await db.collection('chats').find().toArray();
+        console.log('Chats fetched:', chats); // Debugging log
+        res.json(chats);
+    } catch (error) {
+        console.error('Error fetching chats:', error);
+        res.status(500).json({ message: 'Error fetching chats' });
+    }
 });
 
 // Get messages for a specific chat
-router.get('/:chatId/messages', (req, res) => {
-  const { chatId } = req.params;
-  const chatMessages = messages.filter((message) => message.chatId === chatId);
-  res.json(chatMessages);
+router.get('/:chatId/messages', async (req, res) => {
+    const { chatId } = req.params;
+    console.log('GET /chats/:chatId/messages called with chatId:', chatId); // Debugging log
+
+    try {
+        if (!ObjectId.isValid(chatId)) {
+            console.error('Invalid chatId:', chatId); // Debugging log
+            return res.status(400).json({ message: 'Invalid chatId' });
+        }
+
+        const db = await connectDB();
+        const messages = await db
+            .collection('messages')
+            .find({ chatId: new ObjectId(chatId) })
+            .toArray();
+        console.log('Messages fetched:', messages); // Debugging log
+        res.json(messages);
+    } catch (error) {
+        console.error('Error fetching messages:', error);
+        res.status(500).json({ message: 'Error fetching messages' });
+    }
 });
 
 // Send a new message
-router.post('/:chatId/messages', (req, res) => {
-  const { chatId } = req.params;
-  const { sender, text } = req.body;
+router.post('/:chatId/messages', async (req, res) => {
+    const { chatId } = req.params;
+    const { sender, text } = req.body;
+    console.log('POST /chats/:chatId/messages called with:', { chatId, sender, text }); // Debugging log
 
-  if (!sender || !text) {
-    return res.status(400).json({ message: 'Sender and text are required' });
-  }
+    if (!sender || !text) {
+        console.error('Missing sender or text:', { sender, text }); // Debugging log
+        return res.status(400).json({ message: 'Sender and text are required' });
+    }
 
-  const newMessage: Message = {
-    id: (messages.length + 1).toString(),
-    chatId,
-    sender,
-    text,
-    timestamp: new Date().toISOString(),
-  };
+    try {
+        if (!ObjectId.isValid(chatId)) {
+            console.error('Invalid chatId:', chatId); // Debugging log
+            return res.status(400).json({ message: 'Invalid chatId' });
+        }
+        if (!ObjectId.isValid(sender)) {
+            console.error('Invalid sender:', sender); // Debugging log
+            return res.status(400).json({ message: 'Invalid sender' });
+        }
 
-  messages.push(newMessage);
-  res.status(201).json(newMessage);
+        const db = await connectDB();
+        const newMessage = {
+            chatId: new ObjectId(chatId),
+            sender: new ObjectId(sender),
+            text,
+            timestamp: new Date(),
+        };
+        const result = await db.collection('messages').insertOne(newMessage);
+        console.log('Message inserted:', result); // Debugging log
+        res.status(201).json({ ...newMessage, _id: result.insertedId });
+    } catch (error) {
+        console.error('Error sending message:', error);
+        res.status(500).json({ message: 'Error sending message' });
+    }
 });
 
 export default router;
