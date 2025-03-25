@@ -1,5 +1,6 @@
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
+import chatRoutes from './routes/chatRoutes'; // Import chat routes
 
 const app: Express = express();
 
@@ -73,5 +74,8 @@ app.post('/swipes', (req: Request, res: Response) => {
 app.get('/connections', (req: Request, res: Response) => {
   res.json(connections);
 });
+
+// Chat routes
+app.use('/chats', chatRoutes); // Register chat routes
 
 export default app;
